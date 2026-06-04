@@ -121,7 +121,7 @@ onUnmounted(() => {
 <template>
   <PageShell>
     <section class="content-header">
-      <p class="eyebrow">실시간 축하 메모</p>
+      <p class="eyebrow">MESSAGE FOR EUNSEO</p>
       <h1>은서 롤링페이퍼</h1>
       <p>종이 위에 남기는 마음들이 실시간으로 함께 보입니다.</p>
     </section>
@@ -158,6 +158,10 @@ onUnmounted(() => {
       </form>
 
       <div class="paper-canvas" aria-label="롤링페이퍼 캔버스">
+        <div class="paper-heading" aria-hidden="true">
+          <span>THANK YOU</span>
+          <strong>은서에게 남기는 마음</strong>
+        </div>
         <article v-for="note in notes" :key="note.id" class="paper-note" :style="noteStyle(note)">
           <p>{{ note.message }}</p>
           <strong>{{ note.author_name }}</strong>

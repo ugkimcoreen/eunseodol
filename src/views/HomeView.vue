@@ -31,17 +31,27 @@ const menus = [
   <PageShell>
     <section class="home-hero">
       <div class="hero-copy">
-        <p class="eyebrow">첫 생일 참여 허브</p>
-        <h1>은서 playground</h1>
-        <p>돌잡이 예측, 사진 월드컵, 롤링페이퍼를 한 곳에서 진행하는 가족 참여 페이지입니다.</p>
+        <p class="eyebrow">INVITATION</p>
+        <h1>은서의 첫 생일</h1>
+        <p>돌잡이 예측, 사진 월드컵, 롤링페이퍼를 한 곳에서 즐기는 작은 돌잔치 놀이터입니다.</p>
       </div>
-      <RouterLink class="admin-link" to="/admin">관리자 결과 보기</RouterLink>
+      <div class="invite-card" aria-label="은서 첫 생일 초대장">
+        <div class="invite-line"></div>
+        <p>1ST BIRTHDAY</p>
+        <div class="invite-photo-frame">
+          <div class="invite-photo">E</div>
+        </div>
+        <strong>김은서</strong>
+        <span>2025.07.24 THU 12:00</span>
+        <RouterLink class="admin-link" to="/admin">결과 보기</RouterLink>
+      </div>
     </section>
 
     <section class="menu-grid" aria-label="참여 메뉴">
-      <RouterLink v-for="menu in menus" :key="menu.to" class="menu-card" :to="menu.to">
+      <RouterLink v-for="(menu, index) in menus" :key="menu.to" class="menu-card" :to="menu.to">
         <component :is="menu.icon" :size="30" stroke-width="1.8" />
         <div>
+          <small>{{ String(index + 1).padStart(2, '0') }} · EUNSEO PARTY</small>
           <h2>{{ menu.title }}</h2>
           <p>{{ menu.description }}</p>
         </div>

@@ -57,7 +57,7 @@ onMounted(loadAdminData)
   <PageShell>
     <section class="content-header admin-header">
       <div>
-        <p class="eyebrow">결과 확인</p>
+        <p class="eyebrow">PARTY DASHBOARD</p>
         <h1>Admin</h1>
         <p>돌잡이 예측, 포토월드컵 집계, 롤링페이퍼 메모를 확인합니다.</p>
       </div>

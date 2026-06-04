@@ -45,12 +45,18 @@ async function submitVote() {
 <template>
   <PageShell>
     <section class="content-header">
-      <p class="eyebrow">미리 맞혀보기</p>
+      <p class="eyebrow">DOLJABI LOTTO</p>
       <h1>미리 돌잡이 로또</h1>
       <p>은서가 실제 돌잡이에서 무엇을 고를지 이름과 함께 남겨주세요.</p>
     </section>
 
     <form class="form-panel" @submit.prevent="submitVote">
+      <div class="section-title">
+        <span></span>
+        <strong>무엇을 잡을까요?</strong>
+        <span></span>
+      </div>
+
       <label class="field">
         <span>참여자 이름</span>
         <input v-model="participantName" maxlength="24" placeholder="예: 김은서삼촌" />
@@ -66,6 +72,7 @@ async function submitVote() {
           :style="{ '--choice-color': option.color }"
           @click="selectedOption = option.id"
         >
+          <span class="choice-dot" aria-hidden="true"></span>
           <strong>{{ option.label }}</strong>
           <small>{{ option.detail }}</small>
         </button>

@@ -110,14 +110,17 @@ onMounted(loadPhotos)
 <template>
   <PageShell>
     <section class="content-header">
-      <p class="eyebrow">사진 토너먼트</p>
+      <p class="eyebrow">PHOTO MOMENTS</p>
       <h1>베스트포토월드컵</h1>
       <p>둘 중 더 마음에 드는 은서 사진을 골라 최종 베스트 사진을 뽑아주세요.</p>
     </section>
 
     <section class="worldcup-stage">
       <div class="stage-toolbar">
-        <strong>{{ progressText }}</strong>
+        <div>
+          <small>BEST PHOTO TOURNAMENT</small>
+          <strong>{{ progressText }}</strong>
+        </div>
         <button type="button" @click="startTournament()">처음부터</button>
       </div>
 
@@ -126,6 +129,7 @@ onMounted(loadPhotos)
 
       <div v-if="winner" class="winner-panel">
         <Trophy :size="40" />
+        <p class="eyebrow">WINNER</p>
         <img :src="winner.image_url" :alt="winner.title" />
         <h2>{{ winner.title }}</h2>
         <p>{{ saved ? '우승 카운트가 저장되었습니다.' : '샘플 또는 로컬 모드에서는 카운트를 저장하지 않습니다.' }}</p>
