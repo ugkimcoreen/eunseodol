@@ -1,6 +1,8 @@
 <script setup>
+import { computed, onMounted, ref } from 'vue'
 import { Baby, Camera, ScrollText } from '@lucide/vue'
 import PageShell from '../components/PageShell.vue'
+import { hasSupabaseConfig, supabase } from '../lib/supabase'
 
 const menus = [
   {
@@ -25,6 +27,35 @@ const menus = [
     icon: ScrollText,
   },
 ]
+
+const galleryPhotos = ref([])
+const galleryError = ref('')
+
+const framedGalleryPhotos = computed(() =>
+  galleryPhotos.value.map((photo, index) => ({
+    ...photo,
+    rotation: `${[-5, 3, -2, 5, -4, 2][index % 6]}deg`,
+    offset: `${[10, 0, 18, 4, 14, 2][index % 6]}px`,
+  })),
+)
+
+async function loadGalleryPhotos() {
+  if (!hasSupabaseConfig) return
+
+  try {
+    const { data, error } = await supabase
+      .from('eunseo_gallery_photos')
+      .select('id,title,image_url,created_at')
+      .order('created_at', { ascending: false })
+
+    if (error) throw error
+    galleryPhotos.value = data ?? []
+  } catch (err) {
+    galleryError.value = err.message ?? '갤러리 사진을 불러오지 못했습니다.'
+  }
+}
+
+onMounted(loadGalleryPhotos)
 </script>
 
 <template>
@@ -57,6 +88,25 @@ const menus = [
         </div>
         <span>{{ menu.label }}</span>
       </RouterLink>
+    </section>
+
+    <section v-if="framedGalleryPhotos.length || galleryError" class="home-gallery" aria-label="은서 갤러리">
+      <div class="gallery-heading">
+        <p class="eyebrow">EUNSEO GALLERY</p>
+        <h2>은서의 순간들</h2>
+      </div>
+      <p v-if="galleryError" class="error-message">{{ galleryError }}</p>
+      <div v-else class="polaroid-grid">
+        <article
+          v-for="photo in framedGalleryPhotos"
+          :key="photo.id"
+          class="polaroid-card"
+          :style="{ '--rotation': photo.rotation, '--offset': photo.offset }"
+        >
+          <img :src="photo.image_url" :alt="photo.title" loading="lazy" />
+          <strong>{{ photo.title }}</strong>
+        </article>
+      </div>
     </section>
   </PageShell>
 </template>

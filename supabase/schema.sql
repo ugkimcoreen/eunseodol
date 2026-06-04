@@ -31,6 +31,14 @@ create table if not exists public.rolling_paper_notes (
   created_at timestamptz not null default now()
 );
 
+create table if not exists public.eunseo_gallery_photos (
+  id uuid primary key default gen_random_uuid(),
+  title text not null,
+  image_url text not null,
+  storage_path text not null,
+  created_at timestamptz not null default now()
+);
+
 create or replace function public.increment_photo_win(photo_id uuid)
 returns void
 language sql
@@ -46,6 +54,7 @@ alter table public.doljabi_votes enable row level security;
 alter table public.photo_worldcup_photos enable row level security;
 alter table public.photo_worldcup_sessions enable row level security;
 alter table public.rolling_paper_notes enable row level security;
+alter table public.eunseo_gallery_photos enable row level security;
 
 create policy "Anyone can submit doljabi votes"
 on public.doljabi_votes for insert
@@ -82,7 +91,31 @@ on public.rolling_paper_notes for insert
 to anon
 with check (true);
 
+create policy "Anyone can read gallery photos"
+on public.eunseo_gallery_photos for select
+to anon
+using (true);
+
+create policy "Anyone can add gallery photos"
+on public.eunseo_gallery_photos for insert
+to anon
+with check (true);
+
 grant execute on function public.increment_photo_win(uuid) to anon;
+
+insert into storage.buckets (id, name, public)
+values ('eunseo-gallery', 'eunseo-gallery', true)
+on conflict (id) do update set public = true;
+
+create policy "Anyone can read eunseo gallery images"
+on storage.objects for select
+to anon
+using (bucket_id = 'eunseo-gallery');
+
+create policy "Anyone can upload eunseo gallery images"
+on storage.objects for insert
+to anon
+with check (bucket_id = 'eunseo-gallery');
 
 do $$
 begin

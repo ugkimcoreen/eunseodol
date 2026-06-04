@@ -124,6 +124,7 @@ a {
 .home-hero,
 .content-header,
 .menu-grid,
+.home-gallery,
 .form-panel,
 .worldcup-stage,
 .rolling-layout,
@@ -354,6 +355,76 @@ h1 {
   margin: 0 auto;
 }
 
+.home-gallery {
+  max-width: 1180px;
+  margin: clamp(42px, 7vw, 82px) auto 0;
+}
+
+.gallery-heading {
+  margin-bottom: 18px;
+}
+
+.gallery-heading h2 {
+  margin: 0;
+  color: var(--ink);
+  font-size: clamp(2rem, 4vw, 3.15rem);
+  font-weight: 500;
+}
+
+.polaroid-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: clamp(18px, 3vw, 30px);
+  align-items: start;
+  padding: 10px 0 18px;
+}
+
+.polaroid-card {
+  display: grid;
+  gap: 14px;
+  align-content: start;
+  min-width: 0;
+  margin-top: var(--offset);
+  border: 1px solid rgba(116, 96, 82, 0.16);
+  border-radius: 4px;
+  background: #fffdf8;
+  padding: 12px 12px 28px;
+  box-shadow:
+    0 18px 28px rgba(85, 67, 49, 0.14),
+    inset 0 -1px 0 rgba(116, 96, 82, 0.08);
+  transform: rotate(var(--rotation));
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.polaroid-card:hover {
+  box-shadow:
+    0 24px 38px rgba(85, 67, 49, 0.18),
+    inset 0 -1px 0 rgba(116, 96, 82, 0.08);
+  transform: rotate(0deg) translateY(-4px);
+}
+
+.polaroid-card img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 2px;
+  object-fit: cover;
+  background: #efe2d8;
+}
+
+.polaroid-card strong {
+  min-height: 26px;
+  color: var(--brown-dark);
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.35;
+  text-align: center;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
 .menu-card,
 .form-panel,
 .worldcup-stage,
@@ -437,6 +508,10 @@ h1 {
   padding: 0 18px;
   font-family: Pretendard, ui-sans-serif, system-ui, sans-serif;
   font-weight: 800;
+}
+
+.primary-action svg {
+  flex: 0 0 auto;
 }
 
 .content-header {
@@ -810,9 +885,18 @@ h1 {
   font-weight: 600;
 }
 
+.upload-form {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(220px, 1fr) auto;
+  gap: 12px;
+  align-items: end;
+  margin-bottom: 14px;
+}
+
 .summary-list,
 .rank-list,
-.note-list {
+.note-list,
+.gallery-admin-list {
   display: grid;
   gap: 10px;
 }
@@ -836,6 +920,47 @@ h1 {
 
 .rank-list span {
   flex: 1;
+}
+
+.gallery-admin-list {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-top: 16px;
+}
+
+.gallery-admin-list article {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  border: 1px solid rgba(116, 96, 82, 0.15);
+  border-radius: 8px;
+  background: rgba(255, 253, 249, 0.68);
+  padding: 10px;
+}
+
+.gallery-admin-list img {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: 6px;
+  object-fit: cover;
+}
+
+.gallery-admin-list div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.gallery-admin-list strong,
+.gallery-admin-list span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gallery-admin-list span {
+  color: var(--muted);
+  font-family: Pretendard, ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.8rem;
 }
 
 .table-wrap {
@@ -886,6 +1011,7 @@ th {
 
   .home-hero,
   .menu-grid,
+  .polaroid-grid,
   .option-grid,
   .photo-pair,
   .rolling-layout,
@@ -903,6 +1029,16 @@ th {
 
   .paper-canvas {
     min-height: 560px;
+  }
+
+  .upload-form,
+  .gallery-admin-list {
+    grid-template-columns: 1fr;
+  }
+
+  .polaroid-card {
+    margin-top: 0;
+    transform: rotate(var(--rotation));
   }
 }
 
@@ -930,5 +1066,9 @@ th {
 
   .paper-note {
     width: min(190px, 58vw);
+  }
+
+  .home-gallery {
+    margin-top: 38px;
   }
 }
