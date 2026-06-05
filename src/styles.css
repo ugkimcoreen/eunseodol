@@ -1171,7 +1171,9 @@ h1 {
   display: block;
   width: 100%;
   aspect-ratio: 4 / 3;
-  object-fit: cover;
+  background: #f7efe3;
+  object-fit: contain;
+  object-position: center;
 }
 
 .photo-choice span {
@@ -1201,8 +1203,8 @@ h1 {
 
 .winner-panel img {
   border: 9px solid #fffdf8;
-  border-radius: 999px;
-  aspect-ratio: 1;
+  border-radius: 8px;
+  aspect-ratio: 4 / 3;
   box-shadow: 0 0 0 1px rgba(116, 96, 82, 0.22);
 }
 
@@ -1212,9 +1214,111 @@ h1 {
   font-weight: 600;
 }
 
-.winner-panel p:last-child {
+.worldcup-ranking {
+  display: grid;
+  gap: 22px;
+}
+
+.podium {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr) minmax(0, 0.9fr);
+  align-items: end;
+  gap: 14px;
+}
+
+.podium-place,
+.ranking-row article {
+  display: grid;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid rgba(116, 96, 82, 0.2);
+  border-radius: 8px;
+  background: #fffdf8;
+  text-align: center;
+  box-shadow: 0 16px 32px rgba(85, 67, 49, 0.08);
+}
+
+.podium-place {
+  padding-bottom: 14px;
+}
+
+.podium-place img,
+.ranking-row img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  background: #f7efe3;
+  object-fit: contain;
+  object-position: center;
+}
+
+.podium-place strong,
+.ranking-row strong {
+  margin-top: 12px;
+  color: var(--ink);
+  font-size: 1.28rem;
+  font-weight: 800;
+}
+
+.podium-place span,
+.ranking-row span {
+  color: var(--gold);
+  font-family: Pretendard, ui-sans-serif, system-ui, sans-serif;
+  font-weight: 900;
+}
+
+.podium-place p,
+.ranking-row p {
+  min-width: 0;
+  margin: 4px 12px 0;
   color: var(--muted);
   font-family: Pretendard, ui-sans-serif, system-ui, sans-serif;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.rank-first {
+  padding-bottom: 22px;
+}
+
+.rank-first img {
+  aspect-ratio: 1.18 / 1;
+}
+
+.rank-first strong {
+  font-size: 1.6rem;
+}
+
+.rank-second,
+.rank-third {
+  transform: translateY(28px);
+}
+
+.ranking-row {
+  display: grid;
+  grid-auto-columns: minmax(132px, 1fr);
+  grid-auto-flow: column;
+  gap: 10px;
+  overflow-x: auto;
+  padding-top: 30px;
+  padding-bottom: 8px;
+}
+
+.ranking-row article {
+  box-shadow: none;
+}
+
+.ranking-row strong {
+  font-size: 1rem;
+}
+
+.ranking-row span,
+.ranking-row p {
+  font-size: 0.88rem;
+}
+
+.ranking-row p {
+  margin-bottom: 10px;
 }
 
 .worldcup-empty {
@@ -1538,6 +1642,111 @@ h1 {
   opacity: 0.55;
 }
 
+.danger-zone {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  border-color: rgba(180, 72, 72, 0.28);
+  background: rgba(255, 248, 248, 0.84);
+}
+
+.danger-zone > div {
+  display: grid;
+  gap: 7px;
+}
+
+.danger-zone h2,
+.danger-zone p {
+  margin: 0;
+}
+
+.danger-zone p {
+  color: var(--muted);
+  font-family: Pretendard, ui-sans-serif, system-ui, sans-serif;
+  line-height: 1.55;
+  word-break: keep-all;
+}
+
+.danger-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  border: 0;
+  border-radius: 7px;
+  background: #b44848;
+  color: #fffdf8;
+  padding: 0 18px;
+  font-family: Pretendard, ui-sans-serif, system-ui, sans-serif;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.danger-action:hover:not(:disabled),
+.danger-action:focus-visible {
+  outline: none;
+  background: #9e3939;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  background: rgba(35, 29, 25, 0.52);
+  padding: 18px;
+}
+
+.confirm-modal {
+  display: grid;
+  gap: 16px;
+  width: min(100%, 460px);
+  border: 1px solid rgba(180, 72, 72, 0.32);
+  border-radius: 8px;
+  background: #fffdf8;
+  padding: 24px;
+  color: var(--ink);
+  box-shadow: 0 24px 70px rgba(35, 29, 25, 0.28);
+}
+
+.confirm-modal > svg {
+  color: #b44848;
+}
+
+.confirm-modal h2,
+.confirm-modal p {
+  margin: 0;
+}
+
+.confirm-modal h2 {
+  font-size: 1.38rem;
+  font-weight: 700;
+}
+
+.confirm-modal p {
+  color: var(--muted);
+  font-family: Pretendard, ui-sans-serif, system-ui, sans-serif;
+  line-height: 1.6;
+  word-break: keep-all;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.modal-close-button {
+  width: auto;
+  min-width: 84px;
+  padding: 0 16px;
+  font-family: Pretendard, ui-sans-serif, system-ui, sans-serif;
+  font-weight: 800;
+}
+
 .table-wrap {
   overflow-x: auto;
 }
@@ -1589,9 +1798,27 @@ th {
   .polaroid-grid,
   .option-grid,
   .photo-pair,
+  .podium,
   .rolling-layout,
   .admin-grid {
     grid-template-columns: 1fr;
+  }
+
+  .rank-first {
+    order: 1;
+  }
+
+  .rank-second {
+    order: 2;
+  }
+
+  .rank-third {
+    order: 3;
+  }
+
+  .rank-second,
+  .rank-third {
+    transform: none;
   }
 
   .nav-links {
@@ -1609,6 +1836,17 @@ th {
   .upload-form,
   .gallery-admin-list {
     grid-template-columns: 1fr;
+  }
+
+  .danger-zone,
+  .modal-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .danger-action,
+  .modal-close-button {
+    width: 100%;
   }
 
   .polaroid-card {

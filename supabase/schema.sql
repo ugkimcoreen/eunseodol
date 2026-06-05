@@ -57,6 +57,21 @@ as $$
   where id = photo_id;
 $$;
 
+create or replace function public.reset_eunseo_data()
+returns void
+language sql
+security definer
+set search_path = public
+as $$
+  truncate table
+    public.photo_worldcup_sessions,
+    public.photo_worldcup_photos,
+    public.doljabi_votes,
+    public.rolling_paper_notes,
+    public.eunseo_gallery_photos
+  restart identity cascade;
+$$;
+
 alter table public.doljabi_votes enable row level security;
 alter table public.photo_worldcup_photos enable row level security;
 alter table public.photo_worldcup_sessions enable row level security;
@@ -156,6 +171,7 @@ grant insert, select on public.photo_worldcup_sessions to anon;
 grant select, insert on public.rolling_paper_notes to anon;
 grant select, insert, update, delete on public.eunseo_gallery_photos to anon;
 grant execute on function public.increment_photo_win(uuid) to anon;
+grant execute on function public.reset_eunseo_data() to anon;
 
 insert into storage.buckets (id, name, public)
 values ('eunseo-gallery', 'eunseo-gallery', true)

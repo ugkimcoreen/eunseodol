@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { ImagePlus, MinusCircle, Pencil, PlusCircle, RefreshCw, Save, Trash2, X } from '@lucide/vue'
+import { AlertTriangle, ImagePlus, MinusCircle, Pencil, PlusCircle, RefreshCw, Save, Trash2, X } from '@lucide/vue'
 import PageShell from '../components/PageShell.vue'
 import { doljabiOptions, optionLabel } from '../lib/doljabi'
 import { hasSupabaseConfig, supabase } from '../lib/supabase'
@@ -22,7 +22,13 @@ const galleryEditingId = ref('')
 const galleryEditingTitle = ref('')
 const gallerySavingId = ref('')
 const galleryDeletingId = ref('')
+const isResetModalOpen = ref(false)
+const isResetting = ref(false)
+const resetConfirmText = ref('')
+const resetError = ref('')
+const resetSuccess = ref('')
 const WORLDCUP_SIZE = 16
+const RESET_CONFIRM_TEXT = '초기화'
 
 const voteSummary = computed(() =>
   doljabiOptions.map((option) => ({
@@ -43,6 +49,27 @@ const galleryFileCountText = computed(() => {
 
 function worldcupPhotoForGallery(galleryPhoto) {
   return photos.value.find((photo) => photo.gallery_photo_id === galleryPhoto.id)
+}
+
+function worldcupPhotosForGallery(galleryPhoto) {
+  return photos.value.filter(
+    (photo) => photo.gallery_photo_id === galleryPhoto.id || photo.image_url === galleryPhoto.image_url,
+  )
+}
+
+function storagePathForGalleryPhoto(galleryPhoto) {
+  if (galleryPhoto.storage_path) return galleryPhoto.storage_path
+
+  try {
+    const pathPrefix = '/storage/v1/object/public/eunseo-gallery/'
+    const { pathname } = new URL(galleryPhoto.image_url)
+    const prefixIndex = pathname.indexOf(pathPrefix)
+
+    if (prefixIndex === -1) return ''
+    return decodeURIComponent(pathname.slice(prefixIndex + pathPrefix.length))
+  } catch {
+    return ''
+  }
 }
 
 function isInWorldcup(galleryPhoto) {
@@ -296,31 +323,115 @@ async function deleteGalleryPhoto(galleryPhoto) {
   galleryDeletingId.value = galleryPhoto.id
 
   try {
-    const existingPhoto = worldcupPhotoForGallery(galleryPhoto)
-    if (existingPhoto) {
+    const linkedWorldcupPhotos = worldcupPhotosForGallery(galleryPhoto)
+    if (linkedWorldcupPhotos.length) {
       const { error: worldcupError } = await supabase
         .from('photo_worldcup_photos')
         .delete()
-        .eq('id', existingPhoto.id)
+        .in(
+          'id',
+          linkedWorldcupPhotos.map((photo) => photo.id),
+        )
 
       if (worldcupError) throw worldcupError
-    }
-
-    if (galleryPhoto.storage_path) {
-      const { error: storageError } = await supabase.storage.from('eunseo-gallery').remove([galleryPhoto.storage_path])
-      if (storageError) throw storageError
     }
 
     const { error: galleryError } = await supabase.from('eunseo_gallery_photos').delete().eq('id', galleryPhoto.id)
     if (galleryError) throw galleryError
 
+    const storagePath = storagePathForGalleryPhoto(galleryPhoto)
+    if (storagePath) {
+      const { error: storageError } = await supabase.storage.from('eunseo-gallery').remove([storagePath])
+      if (storageError) {
+        uploadSuccess.value = '사진 목록에서는 삭제했습니다. Storage 파일 삭제 권한은 Supabase 정책을 확인해주세요.'
+      }
+    }
+
     if (galleryEditingId.value === galleryPhoto.id) cancelEditGalleryPhoto()
-    uploadSuccess.value = '사진을 삭제했습니다.'
+    if (!uploadSuccess.value) uploadSuccess.value = '사진을 삭제했습니다.'
     await loadAdminData()
   } catch (err) {
     uploadError.value = err.message ?? '사진 삭제 중 오류가 발생했습니다.'
   } finally {
     galleryDeletingId.value = ''
+  }
+}
+
+function openResetModal() {
+  resetConfirmText.value = ''
+  resetError.value = ''
+  resetSuccess.value = ''
+  isResetModalOpen.value = true
+}
+
+function closeResetModal() {
+  if (isResetting.value) return
+  isResetModalOpen.value = false
+  resetConfirmText.value = ''
+  resetError.value = ''
+}
+
+async function removeAllGalleryStorageFiles() {
+  const paths = new Set(galleryPhotos.value.map(storagePathForGalleryPhoto).filter(Boolean))
+  let offset = 0
+  const limit = 100
+
+  while (true) {
+    const { data, error: listError } = await supabase.storage.from('eunseo-gallery').list('gallery', {
+      limit,
+      offset,
+      sortBy: { column: 'name', order: 'asc' },
+    })
+
+    if (listError) throw listError
+
+    const files = data ?? []
+    files.filter((file) => file.name).forEach((file) => paths.add(`gallery/${file.name}`))
+
+    if (files.length < limit) break
+    offset += limit
+  }
+
+  const allPaths = Array.from(paths)
+  for (let index = 0; index < allPaths.length; index += 100) {
+    const { error: removeError } = await supabase.storage.from('eunseo-gallery').remove(allPaths.slice(index, index + 100))
+    if (removeError) throw removeError
+  }
+}
+
+async function resetAllData() {
+  if (!hasSupabaseConfig) {
+    resetError.value = 'Supabase 환경 변수가 없어 데이터를 초기화할 수 없습니다.'
+    return
+  }
+
+  if (resetConfirmText.value !== RESET_CONFIRM_TEXT) {
+    resetError.value = `"${RESET_CONFIRM_TEXT}"를 입력해야 초기화할 수 있습니다.`
+    return
+  }
+
+  isResetting.value = true
+  resetError.value = ''
+  resetSuccess.value = ''
+
+  try {
+    await removeAllGalleryStorageFiles()
+
+    const { error: resetDataError } = await supabase.rpc('reset_eunseo_data')
+    if (resetDataError) throw resetDataError
+
+    votes.value = []
+    photos.value = []
+    galleryPhotos.value = []
+    notes.value = []
+    resetSuccess.value = '모든 데이터가 초기화되었습니다.'
+    isResetModalOpen.value = false
+    resetConfirmText.value = ''
+    await loadAdminData()
+  } catch (err) {
+    resetError.value = err.message ?? '데이터 초기화 중 오류가 발생했습니다.'
+  } finally {
+    isResetting.value = false
   }
 }
 
@@ -482,6 +593,48 @@ onMounted(loadAdminData)
           </article>
         </div>
       </div>
+
+      <div class="admin-panel wide danger-zone">
+        <div>
+          <h2>데이터 초기화</h2>
+          <p>돌잡이 투표, 포토월드컵 기록, 갤러리 이미지, 롤링페이퍼 메모를 모두 삭제합니다.</p>
+        </div>
+        <button class="danger-action" type="button" :disabled="isResetting" @click="openResetModal">
+          <AlertTriangle :size="18" />
+          전체 데이터 초기화
+        </button>
+        <p v-if="resetSuccess" class="success-message">{{ resetSuccess }}</p>
+        <p v-if="resetError && !isResetModalOpen" class="error-message">{{ resetError }}</p>
+      </div>
     </section>
+
+    <div v-if="isResetModalOpen" class="modal-backdrop" role="presentation" @click.self="closeResetModal">
+      <section class="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="reset-modal-title">
+        <AlertTriangle :size="34" />
+        <h2 id="reset-modal-title">정말 모든 데이터를 초기화할까요?</h2>
+        <p>
+          삭제하면 돌잡이 참여 내역, 월드컵 후보/승리 기록, 갤러리 이미지 파일, 롤링페이퍼 메모를 복구할 수 없습니다.
+        </p>
+        <label class="field">
+          계속하려면 "{{ RESET_CONFIRM_TEXT }}"를 입력하세요
+          <input v-model="resetConfirmText" type="text" autocomplete="off" />
+        </label>
+        <p v-if="resetError" class="error-message">{{ resetError }}</p>
+        <div class="modal-actions">
+          <button class="gallery-action-button modal-close-button" type="button" :disabled="isResetting" @click="closeResetModal">
+            취소
+          </button>
+          <button
+            class="danger-action"
+            type="button"
+            :disabled="isResetting || resetConfirmText !== RESET_CONFIRM_TEXT"
+            @click="resetAllData"
+          >
+            <Trash2 :size="18" />
+            {{ isResetting ? '삭제 중' : '진짜 삭제' }}
+          </button>
+        </div>
+      </section>
+    </div>
   </PageShell>
 </template>
