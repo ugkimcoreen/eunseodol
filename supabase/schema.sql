@@ -39,6 +39,13 @@ create table if not exists public.eunseo_gallery_photos (
   created_at timestamptz not null default now()
 );
 
+alter table public.photo_worldcup_photos
+add column if not exists gallery_photo_id uuid references public.eunseo_gallery_photos(id) on delete set null;
+
+create unique index if not exists photo_worldcup_photos_gallery_photo_id_key
+on public.photo_worldcup_photos(gallery_photo_id)
+where gallery_photo_id is not null;
+
 create or replace function public.increment_photo_win(photo_id uuid)
 returns void
 language sql
@@ -56,62 +63,92 @@ alter table public.photo_worldcup_sessions enable row level security;
 alter table public.rolling_paper_notes enable row level security;
 alter table public.eunseo_gallery_photos enable row level security;
 
+drop policy if exists "Anyone can submit doljabi votes" on public.doljabi_votes;
 create policy "Anyone can submit doljabi votes"
 on public.doljabi_votes for insert
 to anon
 with check (true);
 
+drop policy if exists "Anyone can read doljabi votes" on public.doljabi_votes;
 create policy "Anyone can read doljabi votes"
 on public.doljabi_votes for select
 to anon
 using (true);
 
+drop policy if exists "Anyone can read active photos" on public.photo_worldcup_photos;
 create policy "Anyone can read active photos"
 on public.photo_worldcup_photos for select
 to anon
-using (is_active = true);
+using (true);
 
+drop policy if exists "Anyone can add worldcup photos" on public.photo_worldcup_photos;
+create policy "Anyone can add worldcup photos"
+on public.photo_worldcup_photos for insert
+to anon
+with check (true);
+
+drop policy if exists "Anyone can update worldcup photos" on public.photo_worldcup_photos;
+create policy "Anyone can update worldcup photos"
+on public.photo_worldcup_photos for update
+to anon
+using (true)
+with check (true);
+
+drop policy if exists "Anyone can create worldcup sessions" on public.photo_worldcup_sessions;
 create policy "Anyone can create worldcup sessions"
 on public.photo_worldcup_sessions for insert
 to anon
 with check (true);
 
+drop policy if exists "Anyone can read worldcup sessions" on public.photo_worldcup_sessions;
 create policy "Anyone can read worldcup sessions"
 on public.photo_worldcup_sessions for select
 to anon
 using (true);
 
+drop policy if exists "Anyone can read rolling paper" on public.rolling_paper_notes;
 create policy "Anyone can read rolling paper"
 on public.rolling_paper_notes for select
 to anon
 using (true);
 
+drop policy if exists "Anyone can add rolling paper notes" on public.rolling_paper_notes;
 create policy "Anyone can add rolling paper notes"
 on public.rolling_paper_notes for insert
 to anon
 with check (true);
 
+drop policy if exists "Anyone can read gallery photos" on public.eunseo_gallery_photos;
 create policy "Anyone can read gallery photos"
 on public.eunseo_gallery_photos for select
 to anon
 using (true);
 
+drop policy if exists "Anyone can add gallery photos" on public.eunseo_gallery_photos;
 create policy "Anyone can add gallery photos"
 on public.eunseo_gallery_photos for insert
 to anon
 with check (true);
 
+grant usage on schema public to anon;
+grant select, insert on public.doljabi_votes to anon;
+grant select, insert, update on public.photo_worldcup_photos to anon;
+grant insert, select on public.photo_worldcup_sessions to anon;
+grant select, insert on public.rolling_paper_notes to anon;
+grant select, insert on public.eunseo_gallery_photos to anon;
 grant execute on function public.increment_photo_win(uuid) to anon;
 
 insert into storage.buckets (id, name, public)
 values ('eunseo-gallery', 'eunseo-gallery', true)
 on conflict (id) do update set public = true;
 
+drop policy if exists "Anyone can read eunseo gallery images" on storage.objects;
 create policy "Anyone can read eunseo gallery images"
 on storage.objects for select
 to anon
 using (bucket_id = 'eunseo-gallery');
 
+drop policy if exists "Anyone can upload eunseo gallery images" on storage.objects;
 create policy "Anyone can upload eunseo gallery images"
 on storage.objects for insert
 to anon
@@ -123,3 +160,5 @@ begin
 exception
   when duplicate_object then null;
 end $$;
+
+notify pgrst, 'reload schema';

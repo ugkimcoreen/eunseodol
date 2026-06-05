@@ -26,7 +26,7 @@ function shuffle(items) {
 }
 
 function startTournament(items = photos.value) {
-  const activePhotos = shuffle(items).slice(0, 16)
+  const activePhotos = shuffle(items).slice(0, 32)
   round.value = activePhotos
   nextRound.value = []
   pairIndex.value = 0

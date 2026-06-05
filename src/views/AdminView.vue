@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { ImagePlus, RefreshCw } from '@lucide/vue'
+import { ImagePlus, MinusCircle, PlusCircle, RefreshCw } from '@lucide/vue'
 import PageShell from '../components/PageShell.vue'
 import { doljabiOptions, optionLabel } from '../lib/doljabi'
 import { hasSupabaseConfig, supabase } from '../lib/supabase'
@@ -17,6 +17,7 @@ const uploadSuccess = ref('')
 const galleryTitle = ref('')
 const galleryFile = ref(null)
 const galleryFileInput = ref(null)
+const worldcupUpdatingId = ref('')
 
 const voteSummary = computed(() =>
   doljabiOptions.map((option) => ({
@@ -24,6 +25,20 @@ const voteSummary = computed(() =>
     count: votes.value.filter((vote) => vote.selected_option === option.id).length,
   })),
 )
+
+const activeWorldcupPhotos = computed(() => photos.value.filter((photo) => photo.is_active))
+const activeWorldcupGalleryIds = computed(
+  () => new Set(activeWorldcupPhotos.value.map((photo) => photo.gallery_photo_id).filter(Boolean)),
+)
+const worldcupCountText = computed(() => `${activeWorldcupPhotos.value.length} / 32장 선택됨`)
+
+function worldcupPhotoForGallery(galleryPhoto) {
+  return photos.value.find((photo) => photo.gallery_photo_id === galleryPhoto.id)
+}
+
+function isInWorldcup(galleryPhoto) {
+  return activeWorldcupGalleryIds.value.has(galleryPhoto.id)
+}
 
 async function loadAdminData() {
   isLoading.value = true
@@ -132,6 +147,67 @@ async function uploadGalleryPhoto() {
   }
 }
 
+async function toggleWorldcupPhoto(galleryPhoto) {
+  if (!hasSupabaseConfig) {
+    uploadError.value = 'Supabase 환경 변수가 없어 월드컵 사진을 수정할 수 없습니다.'
+    return
+  }
+
+  uploadError.value = ''
+  uploadSuccess.value = ''
+  worldcupUpdatingId.value = galleryPhoto.id
+
+  try {
+    const existingPhoto = worldcupPhotoForGallery(galleryPhoto)
+
+    if (existingPhoto?.is_active) {
+      const { error: updateError } = await supabase
+        .from('photo_worldcup_photos')
+        .update({ is_active: false })
+        .eq('id', existingPhoto.id)
+
+      if (updateError) throw updateError
+      uploadSuccess.value = '월드컵 후보에서 제외했습니다.'
+      await loadAdminData()
+      return
+    }
+
+    if (activeWorldcupPhotos.value.length >= 32) {
+      uploadError.value = '월드컵 후보는 최대 32장까지 선택할 수 있습니다.'
+      return
+    }
+
+    if (existingPhoto) {
+      const { error: updateError } = await supabase
+        .from('photo_worldcup_photos')
+        .update({
+          title: galleryPhoto.title,
+          image_url: galleryPhoto.image_url,
+          is_active: true,
+        })
+        .eq('id', existingPhoto.id)
+
+      if (updateError) throw updateError
+    } else {
+      const { error: insertError } = await supabase.from('photo_worldcup_photos').insert({
+        gallery_photo_id: galleryPhoto.id,
+        title: galleryPhoto.title,
+        image_url: galleryPhoto.image_url,
+        is_active: true,
+      })
+
+      if (insertError) throw insertError
+    }
+
+    uploadSuccess.value = '월드컵 후보에 추가했습니다.'
+    await loadAdminData()
+  } catch (err) {
+    uploadError.value = err.message ?? '월드컵 후보 수정 중 오류가 발생했습니다.'
+  } finally {
+    worldcupUpdatingId.value = ''
+  }
+}
+
 onMounted(loadAdminData)
 </script>
 
@@ -164,9 +240,12 @@ onMounted(loadAdminData)
       </div>
 
       <div class="admin-panel">
-        <h2>포토월드컵 순위</h2>
+        <div class="panel-title-row">
+          <h2>포토월드컵 순위</h2>
+          <span>{{ worldcupCountText }}</span>
+        </div>
         <div class="rank-list">
-          <div v-for="photo in photos" :key="photo.id">
+          <div v-for="photo in activeWorldcupPhotos" :key="photo.id">
             <img :src="photo.image_url" :alt="photo.title" />
             <span>{{ photo.title }}</span>
             <strong>{{ photo.win_count }}</strong>
@@ -175,7 +254,10 @@ onMounted(loadAdminData)
       </div>
 
       <div class="admin-panel wide">
-        <h2>홈 갤러리 이미지 업로드</h2>
+        <div class="panel-title-row">
+          <h2>홈 갤러리 이미지 업로드</h2>
+          <span>갤러리는 전체 공개, 월드컵은 선택한 32장만 사용</span>
+        </div>
         <form class="upload-form" @submit.prevent="uploadGalleryPhoto">
           <label class="field">
             사진 제목
@@ -196,10 +278,21 @@ onMounted(loadAdminData)
         <div class="gallery-admin-list">
           <article v-for="photo in galleryPhotos" :key="photo.id">
             <img :src="photo.image_url" :alt="photo.title" />
-            <div>
+            <div class="gallery-admin-meta">
               <strong>{{ photo.title }}</strong>
               <span>{{ new Date(photo.created_at).toLocaleString('ko-KR') }}</span>
             </div>
+            <button
+              class="worldcup-toggle"
+              type="button"
+              :class="{ active: isInWorldcup(photo) }"
+              :disabled="worldcupUpdatingId === photo.id || (!isInWorldcup(photo) && activeWorldcupPhotos.length >= 32)"
+              @click="toggleWorldcupPhoto(photo)"
+            >
+              <MinusCircle v-if="isInWorldcup(photo)" :size="16" />
+              <PlusCircle v-else :size="16" />
+              {{ isInWorldcup(photo) ? '월드컵 포함' : '월드컵 추가' }}
+            </button>
           </article>
         </div>
       </div>
