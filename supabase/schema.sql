@@ -94,6 +94,12 @@ to anon
 using (true)
 with check (true);
 
+drop policy if exists "Anyone can delete worldcup photos" on public.photo_worldcup_photos;
+create policy "Anyone can delete worldcup photos"
+on public.photo_worldcup_photos for delete
+to anon
+using (true);
+
 drop policy if exists "Anyone can create worldcup sessions" on public.photo_worldcup_sessions;
 create policy "Anyone can create worldcup sessions"
 on public.photo_worldcup_sessions for insert
@@ -130,12 +136,25 @@ on public.eunseo_gallery_photos for insert
 to anon
 with check (true);
 
+drop policy if exists "Anyone can update gallery photos" on public.eunseo_gallery_photos;
+create policy "Anyone can update gallery photos"
+on public.eunseo_gallery_photos for update
+to anon
+using (true)
+with check (true);
+
+drop policy if exists "Anyone can delete gallery photos" on public.eunseo_gallery_photos;
+create policy "Anyone can delete gallery photos"
+on public.eunseo_gallery_photos for delete
+to anon
+using (true);
+
 grant usage on schema public to anon;
 grant select, insert on public.doljabi_votes to anon;
-grant select, insert, update on public.photo_worldcup_photos to anon;
+grant select, insert, update, delete on public.photo_worldcup_photos to anon;
 grant insert, select on public.photo_worldcup_sessions to anon;
 grant select, insert on public.rolling_paper_notes to anon;
-grant select, insert on public.eunseo_gallery_photos to anon;
+grant select, insert, update, delete on public.eunseo_gallery_photos to anon;
 grant execute on function public.increment_photo_win(uuid) to anon;
 
 insert into storage.buckets (id, name, public)
@@ -153,6 +172,19 @@ create policy "Anyone can upload eunseo gallery images"
 on storage.objects for insert
 to anon
 with check (bucket_id = 'eunseo-gallery');
+
+drop policy if exists "Anyone can update eunseo gallery images" on storage.objects;
+create policy "Anyone can update eunseo gallery images"
+on storage.objects for update
+to anon
+using (bucket_id = 'eunseo-gallery')
+with check (bucket_id = 'eunseo-gallery');
+
+drop policy if exists "Anyone can delete eunseo gallery images" on storage.objects;
+create policy "Anyone can delete eunseo gallery images"
+on storage.objects for delete
+to anon
+using (bucket_id = 'eunseo-gallery');
 
 do $$
 begin

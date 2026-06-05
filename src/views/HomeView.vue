@@ -1,6 +1,6 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
-import { Baby, Camera, ScrollText } from '@lucide/vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { Baby, Camera, ScrollText, X } from '@lucide/vue'
 import PageShell from '../components/PageShell.vue'
 import { hasSupabaseConfig, supabase } from '../lib/supabase'
 
@@ -30,6 +30,7 @@ const menus = [
 
 const galleryPhotos = ref([])
 const galleryError = ref('')
+const selectedPhoto = ref(null)
 
 const framedGalleryPhotos = computed(() =>
   galleryPhotos.value.map((photo, index) => ({
@@ -55,7 +56,26 @@ async function loadGalleryPhotos() {
   }
 }
 
-onMounted(loadGalleryPhotos)
+function openPhoto(photo) {
+  selectedPhoto.value = photo
+}
+
+function closePhoto() {
+  selectedPhoto.value = null
+}
+
+function handleKeydown(event) {
+  if (event.key === 'Escape') closePhoto()
+}
+
+onMounted(() => {
+  loadGalleryPhotos()
+  window.addEventListener('keydown', handleKeydown)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', handleKeydown)
+})
 </script>
 
 <template>
@@ -97,16 +117,38 @@ onMounted(loadGalleryPhotos)
       </div>
       <p v-if="galleryError" class="error-message">{{ galleryError }}</p>
       <div v-else class="polaroid-grid">
-        <article
+        <button
           v-for="photo in framedGalleryPhotos"
           :key="photo.id"
+          type="button"
           class="polaroid-card"
           :style="{ '--rotation': photo.rotation, '--offset': photo.offset }"
+          :aria-label="`${photo.title} 사진 크게 보기`"
+          @click="openPhoto(photo)"
         >
           <img :src="photo.image_url" :alt="photo.title" loading="lazy" />
           <strong>{{ photo.title }}</strong>
-        </article>
+        </button>
       </div>
     </section>
+
+    <Teleport to="body">
+      <div
+        v-if="selectedPhoto"
+        class="photo-lightbox"
+        role="dialog"
+        aria-modal="true"
+        :aria-label="`${selectedPhoto.title} 사진 전체화면 보기`"
+        @click="closePhoto"
+      >
+        <button type="button" class="lightbox-close" aria-label="닫기" @click.stop="closePhoto">
+          <X :size="24" stroke-width="1.9" />
+        </button>
+        <figure class="lightbox-frame" @click.stop>
+          <img :src="selectedPhoto.image_url" :alt="selectedPhoto.title" />
+          <figcaption>{{ selectedPhoto.title }}</figcaption>
+        </figure>
+      </div>
+    </Teleport>
   </PageShell>
 </template>

@@ -13,24 +13,37 @@ const winner = ref(null)
 const isLoading = ref(true)
 const error = ref('')
 const saved = ref(false)
+const WORLDCUP_SIZE = 16
 
 const currentPair = computed(() => round.value.slice(pairIndex.value, pairIndex.value + 2))
 const progressText = computed(() => {
   if (winner.value) return '우승 사진'
   if (!round.value.length) return '준비 중'
-  return `${Math.floor(pairIndex.value / 2) + 1} / ${Math.ceil(round.value.length / 2)} 매치`
+  const roundName = round.value.length === 2 ? '결승' : `${round.value.length}강`
+  return `${roundName} ${Math.floor(pairIndex.value / 2) + 1} / ${Math.ceil(round.value.length / 2)} 매치`
 })
+const readyText = computed(() => `${photos.value.length} / ${WORLDCUP_SIZE}장 준비됨`)
+const hasEnoughPhotos = computed(() => photos.value.length >= WORLDCUP_SIZE)
 
 function shuffle(items) {
   return [...items].sort(() => Math.random() - 0.5)
 }
 
 function startTournament(items = photos.value) {
-  const activePhotos = shuffle(items).slice(0, 32)
+  if (items.length < WORLDCUP_SIZE) {
+    round.value = []
+    nextRound.value = []
+    pairIndex.value = 0
+    winner.value = null
+    saved.value = false
+    return
+  }
+
+  const activePhotos = shuffle(items).slice(0, WORLDCUP_SIZE)
   round.value = activePhotos
   nextRound.value = []
   pairIndex.value = 0
-  winner.value = activePhotos.length === 1 ? activePhotos[0] : null
+  winner.value = null
   saved.value = false
 }
 
@@ -49,7 +62,7 @@ async function loadPhotos() {
         .order('created_at', { ascending: true })
 
       if (selectError) throw selectError
-      photos.value = data?.length >= 2 ? data : fallbackPhotos
+      photos.value = data ?? []
     }
 
     startTournament()
@@ -119,9 +132,9 @@ onMounted(loadPhotos)
       <div class="stage-toolbar">
         <div>
           <small>BEST PHOTO TOURNAMENT</small>
-          <strong>{{ progressText }}</strong>
+          <strong>{{ hasEnoughPhotos ? progressText : readyText }}</strong>
         </div>
-        <button type="button" @click="startTournament()">처음부터</button>
+        <button type="button" :disabled="!hasEnoughPhotos" @click="startTournament()">처음부터</button>
       </div>
 
       <p v-if="isLoading" class="muted">사진을 불러오는 중입니다.</p>
@@ -135,11 +148,16 @@ onMounted(loadPhotos)
         <p>{{ saved ? '우승 카운트가 저장되었습니다.' : '샘플 또는 로컬 모드에서는 카운트를 저장하지 않습니다.' }}</p>
       </div>
 
-      <div v-else class="photo-pair">
+      <div v-else-if="hasEnoughPhotos" class="photo-pair">
         <button v-for="photo in currentPair" :key="photo.id" class="photo-choice" type="button" @click="choosePhoto(photo)">
           <img :src="photo.image_url" :alt="photo.title" />
           <span>{{ photo.title }}</span>
         </button>
+      </div>
+
+      <div v-else-if="!isLoading" class="worldcup-empty">
+        <strong>16강 후보가 아직 부족합니다.</strong>
+        <p>Admin에서 업로드한 갤러리 이미지 중 월드컵 후보 16장을 선택하면 바로 플레이할 수 있습니다.</p>
       </div>
     </section>
   </PageShell>
