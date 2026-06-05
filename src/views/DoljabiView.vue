@@ -10,6 +10,7 @@ const SESSION_VOTE_KEY = 'eunseo-doljabi-voted'
 const participantName = ref('')
 const selectedOption = ref('')
 const votes = ref([])
+const openResultId = ref('')
 const isSubmitting = ref(false)
 const saved = ref(false)
 const hasVotedThisSession = ref(false)
@@ -20,13 +21,24 @@ const canSubmit = computed(
 )
 const activeOption = computed(() => doljabiOptions.find((option) => option.id === selectedOption.value))
 const voteSummary = computed(() =>
-  doljabiOptions.map((option) => ({
-    ...option,
-    count: votes.value.filter((vote) => vote.selected_option === option.id).length,
-  })),
+  doljabiOptions
+    .map((option, index) => {
+      const optionVotes = votes.value.filter((vote) => vote.selected_option === option.id)
+      return {
+        ...option,
+        count: optionVotes.length,
+        names: optionVotes.map((vote) => vote.participant_name).filter(Boolean),
+        sortIndex: index,
+      }
+    })
+    .sort((a, b) => b.count - a.count || a.sortIndex - b.sortIndex),
 )
 const maxVoteCount = computed(() => Math.max(1, ...voteSummary.value.map((option) => option.count)))
 const totalVoteCount = computed(() => votes.value.length)
+
+function toggleResultPopover(optionId) {
+  openResultId.value = openResultId.value === optionId ? '' : optionId
+}
 
 async function loadVoteCounts() {
   if (!hasSupabaseConfig) {
@@ -37,7 +49,7 @@ async function loadVoteCounts() {
   try {
     const { data, error: selectError } = await supabase
       .from('doljabi_votes')
-      .select('id,selected_option')
+      .select('id,participant_name,selected_option')
       .order('created_at', { ascending: false })
 
     if (selectError) throw selectError
@@ -182,13 +194,28 @@ onMounted(() => {
         <span>{{ totalVoteCount }}표</span>
       </div>
       <div class="doljabi-chart">
-        <div v-for="item in voteSummary" :key="item.id" class="doljabi-chart-row">
-          <span>{{ item.label }}</span>
-          <div class="doljabi-bar-track" aria-hidden="true">
+        <button
+          v-for="item in voteSummary"
+          :key="item.id"
+          type="button"
+          class="doljabi-chart-row"
+          :aria-expanded="openResultId === item.id"
+          @click="toggleResultPopover(item.id)"
+        >
+          <span class="doljabi-chart-label">
+            <img :src="item.image" alt="" aria-hidden="true" />
+            <span>{{ item.label }}</span>
+          </span>
+          <span class="doljabi-bar-track" aria-hidden="true">
             <span class="doljabi-bar" :style="{ width: `${(item.count / maxVoteCount) * 100}%` }"></span>
-          </div>
+          </span>
           <strong>{{ item.count }}</strong>
-        </div>
+          <span v-if="openResultId === item.id" class="doljabi-result-popover">
+            <strong>{{ item.label }} 선택</strong>
+            <span v-if="item.names.length">{{ item.names.join(', ') }}</span>
+            <span v-else>아직 선택한 사람이 없습니다.</span>
+          </span>
+        </button>
       </div>
     </section>
 
