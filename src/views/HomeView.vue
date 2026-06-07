@@ -102,15 +102,6 @@ onBeforeUnmount(() => {
         <h1>은서의 첫 생일</h1>
         <p>돌잡이 예측, 사진 월드컵, 롤링페이퍼를 한 곳에서 즐기는 작은 돌잔치 놀이터입니다.</p>
       </div>
-      <div class="invite-card" aria-label="은서 첫 생일 초대장">
-        <div class="invite-line"></div>
-        <p>1ST BIRTHDAY</p>
-        <div class="invite-photo-frame">
-          <div class="invite-photo">E</div>
-        </div>
-        <strong>김은서</strong>
-        <span>2025.07.24 THU 12:00</span>
-      </div>
     </section>
 
     <section class="menu-grid" aria-label="참여 메뉴">
