@@ -145,6 +145,7 @@ a {
 
 .top-nav {
   display: flex;
+  z-index: 200;
   align-items: center;
   justify-content: space-between;
   gap: 18px;
@@ -179,6 +180,8 @@ a {
 }
 
 .mobile-menu-button {
+  position: relative;
+  z-index: 202;
   display: none;
   align-items: center;
   justify-content: center;
@@ -2079,7 +2082,7 @@ th {
     position: absolute;
     top: calc(100% + 8px);
     right: 0;
-    z-index: 100;
+    z-index: 201;
     display: none;
     width: min(220px, calc(100vw - 36px));
     border: 1px solid rgba(116, 96, 82, 0.2);
