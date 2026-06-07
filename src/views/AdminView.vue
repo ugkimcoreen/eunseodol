@@ -1,12 +1,13 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { AlertTriangle, ImagePlus, MinusCircle, Pencil, PlusCircle, RefreshCw, Save, Trash2, X } from '@lucide/vue'
+import { AlertTriangle, ImagePlus, LockKeyhole, MinusCircle, Pencil, PlusCircle, RefreshCw, Save, Trash2, Video, X } from '@lucide/vue'
 import PageShell from '../components/PageShell.vue'
 import { doljabiOptions, optionLabel } from '../lib/doljabi'
 import { hasSupabaseConfig, supabase } from '../lib/supabase'
 
 const votes = ref([])
 const photos = ref([])
+const activeWorldcupSet = ref(null)
 const galleryPhotos = ref([])
 const notes = ref([])
 const isLoading = ref(false)
@@ -17,6 +18,12 @@ const uploadSuccess = ref('')
 const galleryTitle = ref('')
 const galleryFiles = ref([])
 const galleryFileInput = ref(null)
+const homeVideo = ref(null)
+const homeVideoFile = ref(null)
+const homeVideoFileInput = ref(null)
+const isVideoUploading = ref(false)
+const videoError = ref('')
+const videoSuccess = ref('')
 const worldcupUpdatingId = ref('')
 const galleryEditingId = ref('')
 const galleryEditingTitle = ref('')
@@ -27,8 +34,15 @@ const isResetting = ref(false)
 const resetConfirmText = ref('')
 const resetError = ref('')
 const resetSuccess = ref('')
+const isAdminUnlocked = ref(false)
+const adminPassword = ref('')
+const adminAuthError = ref('')
 const WORLDCUP_SIZE = 16
 const RESET_CONFIRM_TEXT = '초기화'
+const ADMIN_PASSWORD = '1111'
+const ADMIN_AUTH_COOKIE = 'eunseo_admin_auth'
+const ADMIN_AUTH_COOKIE_VALUE = 'unlocked'
+const ADMIN_AUTH_COOKIE_MAX_AGE = 60 * 60 * 24 * 30
 
 const voteSummary = computed(() =>
   doljabiOptions.map((option) => ({
@@ -37,15 +51,68 @@ const voteSummary = computed(() =>
   })),
 )
 
-const activeWorldcupPhotos = computed(() => photos.value.filter((photo) => photo.is_active))
+const activeSetWinCounts = computed(() => {
+  const entries = activeWorldcupSet.value?.photo_worldcup_set_photos ?? []
+  return new Map(entries.map((entry) => [entry.photo_id, Number(entry.win_count ?? 0)]))
+})
+const activeWorldcupPhotos = computed(() =>
+  photos.value
+    .filter((photo) => photo.is_active)
+    .map((photo) => ({
+      ...photo,
+      win_count: activeWorldcupSet.value ? (activeSetWinCounts.value.get(photo.id) ?? 0) : Number(photo.win_count ?? 0),
+    }))
+    .sort(
+      (a, b) =>
+        Number(b.win_count ?? 0) - Number(a.win_count ?? 0) || String(a.title).localeCompare(String(b.title)),
+    ),
+)
 const activeWorldcupGalleryIds = computed(
   () => new Set(activeWorldcupPhotos.value.map((photo) => photo.gallery_photo_id).filter(Boolean)),
 )
 const worldcupCountText = computed(() => `${activeWorldcupPhotos.value.length} / ${WORLDCUP_SIZE}장 선택됨`)
+const worldcupSetText = computed(() => {
+  if (activeWorldcupPhotos.value.length !== WORLDCUP_SIZE) return '16장이 되면 새 세트가 자동 저장됩니다.'
+  if (!activeWorldcupSet.value) return '현재 후보 세트를 준비 중입니다.'
+  return `${activeWorldcupSet.value.name} 결과`
+})
 const galleryFileCountText = computed(() => {
   if (!galleryFiles.value.length) return '이미지 파일'
   return `${galleryFiles.value.length}장 선택됨`
 })
+const homeVideoFileText = computed(() => homeVideoFile.value?.name ?? '가로 영상 파일')
+
+function getCookieValue(name) {
+  return document.cookie
+    .split('; ')
+    .find((cookie) => cookie.startsWith(`${name}=`))
+    ?.split('=')
+    .slice(1)
+    .join('=')
+}
+
+function setAdminAuthCookie() {
+  document.cookie = `${ADMIN_AUTH_COOKIE}=${ADMIN_AUTH_COOKIE_VALUE}; path=/; max-age=${ADMIN_AUTH_COOKIE_MAX_AGE}; SameSite=Lax`
+}
+
+function unlockAdminFromCookie() {
+  isAdminUnlocked.value = getCookieValue(ADMIN_AUTH_COOKIE) === ADMIN_AUTH_COOKIE_VALUE
+}
+
+async function submitAdminPassword() {
+  adminAuthError.value = ''
+
+  if (adminPassword.value !== ADMIN_PASSWORD) {
+    adminAuthError.value = '비밀번호가 올바르지 않습니다.'
+    adminPassword.value = ''
+    return
+  }
+
+  setAdminAuthCookie()
+  isAdminUnlocked.value = true
+  adminPassword.value = ''
+  await loadAdminData()
+}
 
 function worldcupPhotoForGallery(galleryPhoto) {
   return photos.value.find((photo) => photo.gallery_photo_id === galleryPhoto.id)
@@ -96,26 +163,49 @@ async function loadAdminData() {
     if (!hasSupabaseConfig) {
       votes.value = []
       photos.value = []
+      activeWorldcupSet.value = null
       galleryPhotos.value = []
+      homeVideo.value = null
       notes.value = []
       return
     }
 
-    const [voteResult, photoResult, galleryResult, noteResult] = await Promise.all([
+    await supabase.rpc('ensure_active_photo_worldcup_set')
+
+    const [voteResult, photoResult, setResult, galleryResult, videoResult, noteResult] = await Promise.all([
       supabase.from('doljabi_votes').select('*').order('created_at', { ascending: false }),
       supabase.from('photo_worldcup_photos').select('*').order('win_count', { ascending: false }),
+      supabase
+        .from('photo_worldcup_sets')
+        .select(
+          `
+          id,
+          name,
+          photo_worldcup_set_photos (
+            photo_id,
+            win_count
+          )
+        `,
+        )
+        .eq('is_active', true)
+        .maybeSingle(),
       supabase.from('eunseo_gallery_photos').select('*').order('created_at', { ascending: false }),
+      supabase.from('eunseo_home_video').select('*').eq('id', true).maybeSingle(),
       supabase.from('rolling_paper_notes').select('*').order('created_at', { ascending: false }),
     ])
 
     if (voteResult.error) throw voteResult.error
     if (photoResult.error) throw photoResult.error
+    if (setResult.error) throw setResult.error
     if (galleryResult.error) throw galleryResult.error
+    if (videoResult.error) throw videoResult.error
     if (noteResult.error) throw noteResult.error
 
     votes.value = voteResult.data ?? []
     photos.value = photoResult.data ?? []
+    activeWorldcupSet.value = setResult.data ?? null
     galleryPhotos.value = galleryResult.data ?? []
+    homeVideo.value = videoResult.data ?? null
     notes.value = noteResult.data ?? []
   } catch (err) {
     error.value = err.message ?? '관리자 데이터를 불러오지 못했습니다.'
@@ -124,16 +214,27 @@ async function loadAdminData() {
   }
 }
 
+async function ensureActiveWorldcupSet() {
+  const { error: setError } = await supabase.rpc('ensure_active_photo_worldcup_set')
+  if (setError) throw setError
+}
+
 function onGalleryFileChange(event) {
   galleryFiles.value = Array.from(event.target.files ?? [])
   uploadError.value = ''
   uploadSuccess.value = ''
 }
 
-function buildStoragePath(file) {
-  const extension = file.name.split('.').pop()?.toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg'
+function onHomeVideoFileChange(event) {
+  homeVideoFile.value = event.target.files?.[0] ?? null
+  videoError.value = ''
+  videoSuccess.value = ''
+}
+
+function buildStoragePath(file, folder = 'gallery', fallbackExtension = 'jpg') {
+  const extension = file.name.split('.').pop()?.toLowerCase().replace(/[^a-z0-9]/g, '') || fallbackExtension
   const random = globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2)
-  return `gallery/${Date.now()}-${random}.${extension}`
+  return `${folder}/${Date.now()}-${random}.${extension}`
 }
 
 async function uploadGalleryPhoto() {
@@ -205,6 +306,66 @@ async function uploadGalleryPhoto() {
   }
 }
 
+async function uploadHomeVideo() {
+  videoError.value = ''
+  videoSuccess.value = ''
+
+  if (!hasSupabaseConfig) {
+    videoError.value = 'Supabase 환경 변수가 없어 업로드할 수 없습니다.'
+    return
+  }
+
+  if (!homeVideoFile.value) {
+    videoError.value = '업로드할 영상을 선택해주세요.'
+    return
+  }
+
+  if (!homeVideoFile.value.type.startsWith('video/')) {
+    videoError.value = '영상 파일만 업로드할 수 있습니다.'
+    return
+  }
+
+  isVideoUploading.value = true
+
+  try {
+    const previousStoragePath = homeVideo.value?.storage_path
+    const storagePath = buildStoragePath(homeVideoFile.value, 'home-video', 'mp4')
+    const { error: storageError } = await supabase.storage.from('eunseo-gallery').upload(storagePath, homeVideoFile.value, {
+      cacheControl: '3600',
+      contentType: homeVideoFile.value.type,
+      upsert: false,
+    })
+
+    if (storageError) throw storageError
+
+    const {
+      data: { publicUrl },
+    } = supabase.storage.from('eunseo-gallery').getPublicUrl(storagePath)
+
+    const { error: upsertError } = await supabase.from('eunseo_home_video').upsert({
+      id: true,
+      video_url: publicUrl,
+      storage_path: storagePath,
+      updated_at: new Date().toISOString(),
+    })
+
+    if (upsertError) throw upsertError
+
+    if (previousStoragePath && previousStoragePath !== storagePath) {
+      await supabase.storage.from('eunseo-gallery').remove([previousStoragePath])
+    }
+
+    homeVideoFile.value = null
+    if (homeVideoFileInput.value) homeVideoFileInput.value.value = ''
+    videoSuccess.value = '메인 배경 영상이 업로드되었습니다.'
+    await loadAdminData()
+  } catch (err) {
+    videoError.value = err.message ?? '영상 업로드 중 오류가 발생했습니다.'
+  } finally {
+    isVideoUploading.value = false
+  }
+}
+
 async function toggleWorldcupPhoto(galleryPhoto) {
   if (!hasSupabaseConfig) {
     uploadError.value = 'Supabase 환경 변수가 없어 월드컵 사진을 수정할 수 없습니다.'
@@ -225,6 +386,7 @@ async function toggleWorldcupPhoto(galleryPhoto) {
         .eq('id', existingPhoto.id)
 
       if (updateError) throw updateError
+      await ensureActiveWorldcupSet()
       uploadSuccess.value = '월드컵 후보에서 제외했습니다.'
       await loadAdminData()
       return
@@ -257,6 +419,7 @@ async function toggleWorldcupPhoto(galleryPhoto) {
       if (insertError) throw insertError
     }
 
+    await ensureActiveWorldcupSet()
     uploadSuccess.value = '월드컵 후보에 추가했습니다.'
     await loadAdminData()
   } catch (err) {
@@ -339,6 +502,8 @@ async function deleteGalleryPhoto(galleryPhoto) {
     const { error: galleryError } = await supabase.from('eunseo_gallery_photos').delete().eq('id', galleryPhoto.id)
     if (galleryError) throw galleryError
 
+    await ensureActiveWorldcupSet()
+
     const storagePath = storagePathForGalleryPhoto(galleryPhoto)
     if (storagePath) {
       const { error: storageError } = await supabase.storage.from('eunseo-gallery').remove([storagePath])
@@ -371,34 +536,6 @@ function closeResetModal() {
   resetError.value = ''
 }
 
-async function removeAllGalleryStorageFiles() {
-  const paths = new Set(galleryPhotos.value.map(storagePathForGalleryPhoto).filter(Boolean))
-  let offset = 0
-  const limit = 100
-
-  while (true) {
-    const { data, error: listError } = await supabase.storage.from('eunseo-gallery').list('gallery', {
-      limit,
-      offset,
-      sortBy: { column: 'name', order: 'asc' },
-    })
-
-    if (listError) throw listError
-
-    const files = data ?? []
-    files.filter((file) => file.name).forEach((file) => paths.add(`gallery/${file.name}`))
-
-    if (files.length < limit) break
-    offset += limit
-  }
-
-  const allPaths = Array.from(paths)
-  for (let index = 0; index < allPaths.length; index += 100) {
-    const { error: removeError } = await supabase.storage.from('eunseo-gallery').remove(allPaths.slice(index, index + 100))
-    if (removeError) throw removeError
-  }
-}
-
 async function resetAllData() {
   if (!hasSupabaseConfig) {
     resetError.value = 'Supabase 환경 변수가 없어 데이터를 초기화할 수 없습니다.'
@@ -415,16 +552,12 @@ async function resetAllData() {
   resetSuccess.value = ''
 
   try {
-    await removeAllGalleryStorageFiles()
-
     const { error: resetDataError } = await supabase.rpc('reset_eunseo_data')
     if (resetDataError) throw resetDataError
 
     votes.value = []
-    photos.value = []
-    galleryPhotos.value = []
     notes.value = []
-    resetSuccess.value = '모든 데이터가 초기화되었습니다.'
+    resetSuccess.value = '참여 결과가 초기화되었습니다.'
     isResetModalOpen.value = false
     resetConfirmText.value = ''
     await loadAdminData()
@@ -435,11 +568,30 @@ async function resetAllData() {
   }
 }
 
-onMounted(loadAdminData)
+onMounted(() => {
+  unlockAdminFromCookie()
+  if (isAdminUnlocked.value) loadAdminData()
+})
 </script>
 
 <template>
   <PageShell>
+    <section v-if="!isAdminUnlocked" class="admin-auth-panel" aria-labelledby="admin-auth-title">
+      <LockKeyhole :size="34" />
+      <p class="eyebrow">PRIVATE DASHBOARD</p>
+      <h1 id="admin-auth-title">Admin</h1>
+      <p>관리자 화면에 접근하려면 비밀번호를 입력해주세요.</p>
+      <form class="admin-auth-form" @submit.prevent="submitAdminPassword">
+        <label class="field">
+          비밀번호
+          <input v-model="adminPassword" type="password" inputmode="numeric" autocomplete="current-password" autofocus />
+        </label>
+        <button class="primary-action" type="submit">입장</button>
+      </form>
+      <p v-if="adminAuthError" class="error-message">{{ adminAuthError }}</p>
+    </section>
+
+    <template v-else>
     <section class="content-header admin-header">
       <div>
         <p class="eyebrow">PARTY DASHBOARD</p>
@@ -469,7 +621,7 @@ onMounted(loadAdminData)
       <div class="admin-panel">
         <div class="panel-title-row">
           <h2>포토월드컵 순위</h2>
-          <span>{{ worldcupCountText }}</span>
+          <span>{{ worldcupCountText }} · {{ worldcupSetText }}</span>
         </div>
         <div class="rank-list">
           <div v-for="photo in activeWorldcupPhotos" :key="photo.id">
@@ -478,6 +630,26 @@ onMounted(loadAdminData)
             <strong>{{ photo.win_count }}</strong>
           </div>
         </div>
+      </div>
+
+      <div class="admin-panel wide">
+        <div class="panel-title-row">
+          <h2>메인 배경 영상 업로드</h2>
+          <span>홈 첫 화면에 자동 반복 재생됩니다</span>
+        </div>
+        <form class="upload-form home-video-upload-form" @submit.prevent="uploadHomeVideo">
+          <label class="field">
+            {{ homeVideoFileText }}
+            <input ref="homeVideoFileInput" type="file" accept="video/*" @change="onHomeVideoFileChange" />
+          </label>
+          <button class="primary-action" type="submit" :disabled="isVideoUploading">
+            <Video :size="18" />
+            {{ isVideoUploading ? '업로드 중' : '영상 적용' }}
+          </button>
+        </form>
+        <video v-if="homeVideo?.video_url" class="admin-video-preview" :src="homeVideo.video_url" controls muted playsinline></video>
+        <p v-if="videoError" class="error-message">{{ videoError }}</p>
+        <p v-if="videoSuccess" class="success-message">{{ videoSuccess }}</p>
       </div>
 
       <div class="admin-panel wide">
@@ -597,7 +769,7 @@ onMounted(loadAdminData)
       <div class="admin-panel wide danger-zone">
         <div>
           <h2>데이터 초기화</h2>
-          <p>돌잡이 투표, 포토월드컵 기록, 갤러리 이미지, 롤링페이퍼 메모를 모두 삭제합니다.</p>
+          <p>사진은 보존하고 돌잡이 투표, 포토월드컵 결과, 롤링페이퍼 메모만 삭제합니다.</p>
         </div>
         <button class="danger-action" type="button" :disabled="isResetting" @click="openResetModal">
           <AlertTriangle :size="18" />
@@ -613,7 +785,7 @@ onMounted(loadAdminData)
         <AlertTriangle :size="34" />
         <h2 id="reset-modal-title">정말 모든 데이터를 초기화할까요?</h2>
         <p>
-          삭제하면 돌잡이 참여 내역, 월드컵 후보/승리 기록, 갤러리 이미지 파일, 롤링페이퍼 메모를 복구할 수 없습니다.
+          삭제하면 돌잡이 참여 내역, 포토월드컵 승리 기록, 롤링페이퍼 메모를 복구할 수 없습니다. 업로드한 사진은 유지됩니다.
         </p>
         <label class="field">
           계속하려면 "{{ RESET_CONFIRM_TEXT }}"를 입력하세요
@@ -636,5 +808,6 @@ onMounted(loadAdminData)
         </div>
       </section>
     </div>
+    </template>
   </PageShell>
 </template>

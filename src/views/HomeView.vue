@@ -31,6 +31,7 @@ const menus = [
 const galleryPhotos = ref([])
 const galleryError = ref('')
 const selectedPhoto = ref(null)
+const homeVideoUrl = ref('')
 
 const framedGalleryPhotos = computed(() =>
   galleryPhotos.value.map((photo, index) => ({
@@ -51,6 +52,9 @@ async function loadGalleryPhotos() {
 
     if (error) throw error
     galleryPhotos.value = data ?? []
+
+    const { data: videoData } = await supabase.from('eunseo_home_video').select('video_url').eq('id', true).maybeSingle()
+    homeVideoUrl.value = videoData?.video_url ?? ''
   } catch (err) {
     galleryError.value = err.message ?? '갤러리 사진을 불러오지 못했습니다.'
   }
@@ -80,6 +84,18 @@ onBeforeUnmount(() => {
 
 <template>
   <PageShell>
+    <video
+      v-if="homeVideoUrl"
+      class="home-background-video"
+      :src="homeVideoUrl"
+      autoplay
+      muted
+      loop
+      playsinline
+      aria-hidden="true"
+    ></video>
+    <div v-if="homeVideoUrl" class="home-background-scrim" aria-hidden="true"></div>
+
     <section class="home-hero">
       <div class="hero-copy">
         <p class="eyebrow">INVITATION</p>
@@ -94,7 +110,6 @@ onBeforeUnmount(() => {
         </div>
         <strong>김은서</strong>
         <span>2025.07.24 THU 12:00</span>
-        <RouterLink class="admin-link" to="/admin">결과 보기</RouterLink>
       </div>
     </section>
 
