@@ -127,6 +127,17 @@ onUnmounted(() => {
     </section>
 
     <section class="rolling-layout">
+      <div class="paper-canvas" aria-label="롤링페이퍼 캔버스">
+        <div class="paper-heading" aria-hidden="true">
+          <span>THANK YOU</span>
+          <strong>은서에게 남기는 마음</strong>
+        </div>
+        <article v-for="note in notes" :key="note.id" class="paper-note" :style="noteStyle(note)">
+          <p>{{ note.message }}</p>
+          <strong>{{ note.author_name }}</strong>
+        </article>
+      </div>
+
       <form class="note-form" @submit.prevent="addNote">
         <label class="field">
           <span>작성자</span>
@@ -156,17 +167,6 @@ onUnmounted(() => {
         </button>
         <p v-if="error" class="error-message">{{ error }}</p>
       </form>
-
-      <div class="paper-canvas" aria-label="롤링페이퍼 캔버스">
-        <div class="paper-heading" aria-hidden="true">
-          <span>THANK YOU</span>
-          <strong>은서에게 남기는 마음</strong>
-        </div>
-        <article v-for="note in notes" :key="note.id" class="paper-note" :style="noteStyle(note)">
-          <p>{{ note.message }}</p>
-          <strong>{{ note.author_name }}</strong>
-        </article>
-      </div>
     </section>
   </PageShell>
 </template>
