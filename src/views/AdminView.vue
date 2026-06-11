@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { AlertTriangle, ImagePlus, LockKeyhole, MinusCircle, Pencil, PlusCircle, RefreshCw, Save, Trash2, Video, X } from '@lucide/vue'
+import { AlertTriangle, Download, ImagePlus, LockKeyhole, MinusCircle, Pencil, PlusCircle, RefreshCw, Save, Trash2, Video, X } from '@lucide/vue'
 import PageShell from '../components/PageShell.vue'
 import { doljabiOptions, optionLabel } from '../lib/doljabi'
 import { hasSupabaseConfig, supabase } from '../lib/supabase'
@@ -12,6 +12,7 @@ const galleryPhotos = ref([])
 const notes = ref([])
 const isLoading = ref(false)
 const isUploading = ref(false)
+const isDownloadingGallery = ref(false)
 const error = ref('')
 const uploadError = ref('')
 const uploadSuccess = ref('')
@@ -43,6 +44,15 @@ const ADMIN_PASSWORD = '1111'
 const ADMIN_AUTH_COOKIE = 'eunseo_admin_auth'
 const ADMIN_AUTH_COOKIE_VALUE = 'unlocked'
 const ADMIN_AUTH_COOKIE_MAX_AGE = 60 * 60 * 24 * 30
+const ZIP_UTF8_FLAG = 0x0800
+const ZIP_VERSION = 20
+const ZIP_CRC_TABLE = Uint32Array.from({ length: 256 }, (_, value) => {
+  let crc = value
+  for (let index = 0; index < 8; index += 1) {
+    crc = crc & 1 ? 0xedb88320 ^ (crc >>> 1) : crc >>> 1
+  }
+  return crc >>> 0
+})
 
 const voteSummary = computed(() =>
   doljabiOptions.map((option) => ({
@@ -137,6 +147,121 @@ function storagePathForGalleryPhoto(galleryPhoto) {
   } catch {
     return ''
   }
+}
+
+function sanitizeFilename(value, fallback = 'image') {
+  const filename = String(value || fallback)
+    .trim()
+    .replace(/[\\/:*?"<>|]/g, '-')
+    .replace(/\s+/g, ' ')
+    .slice(0, 80)
+
+  return filename || fallback
+}
+
+function uniqueFilename(filename, usedFilenames) {
+  if (!usedFilenames.has(filename)) {
+    usedFilenames.add(filename)
+    return filename
+  }
+
+  const dotIndex = filename.lastIndexOf('.')
+  const basename = dotIndex === -1 ? filename : filename.slice(0, dotIndex)
+  const extension = dotIndex === -1 ? '' : filename.slice(dotIndex)
+  let count = 2
+
+  while (usedFilenames.has(`${basename}-${count}${extension}`)) {
+    count += 1
+  }
+
+  const nextFilename = `${basename}-${count}${extension}`
+  usedFilenames.add(nextFilename)
+  return nextFilename
+}
+
+function extensionForGalleryPhoto(galleryPhoto, blob) {
+  const storagePathExtension = storagePathForGalleryPhoto(galleryPhoto).split('.').pop()
+  if (storagePathExtension && storagePathExtension.length <= 5) return storagePathExtension.toLowerCase()
+
+  const urlExtension = galleryPhoto.image_url?.split('?')[0]?.split('.').pop()
+  if (urlExtension && urlExtension.length <= 5) return urlExtension.toLowerCase()
+
+  const mimeExtension = blob.type.split('/')[1]
+  return mimeExtension || 'jpg'
+}
+
+function triggerBlobDownload(blob, filename) {
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  document.body.append(link)
+  link.click()
+  link.remove()
+  URL.revokeObjectURL(url)
+}
+
+function crc32(bytes) {
+  let crc = 0xffffffff
+  for (const byte of bytes) {
+    crc = ZIP_CRC_TABLE[(crc ^ byte) & 0xff] ^ (crc >>> 8)
+  }
+  return (crc ^ 0xffffffff) >>> 0
+}
+
+function createZipRecord(signature, length) {
+  const bytes = new Uint8Array(length)
+  const view = new DataView(bytes.buffer)
+  view.setUint32(0, signature, true)
+  return { bytes, view }
+}
+
+function buildZipBlob(entries) {
+  const encoder = new TextEncoder()
+  const chunks = []
+  const centralDirectoryChunks = []
+  let offset = 0
+
+  for (const entry of entries) {
+    const filenameBytes = encoder.encode(entry.filename)
+    const dataBytes = new Uint8Array(entry.blob)
+    const checksum = crc32(dataBytes)
+
+    const localHeader = createZipRecord(0x04034b50, 30)
+    localHeader.view.setUint16(4, ZIP_VERSION, true)
+    localHeader.view.setUint16(6, ZIP_UTF8_FLAG, true)
+    localHeader.view.setUint16(8, 0, true)
+    localHeader.view.setUint32(14, checksum, true)
+    localHeader.view.setUint32(18, dataBytes.length, true)
+    localHeader.view.setUint32(22, dataBytes.length, true)
+    localHeader.view.setUint16(26, filenameBytes.length, true)
+
+    chunks.push(localHeader.bytes, filenameBytes, dataBytes)
+
+    const centralDirectoryHeader = createZipRecord(0x02014b50, 46)
+    centralDirectoryHeader.view.setUint16(4, ZIP_VERSION, true)
+    centralDirectoryHeader.view.setUint16(6, ZIP_VERSION, true)
+    centralDirectoryHeader.view.setUint16(8, ZIP_UTF8_FLAG, true)
+    centralDirectoryHeader.view.setUint16(10, 0, true)
+    centralDirectoryHeader.view.setUint32(16, checksum, true)
+    centralDirectoryHeader.view.setUint32(20, dataBytes.length, true)
+    centralDirectoryHeader.view.setUint32(24, dataBytes.length, true)
+    centralDirectoryHeader.view.setUint16(28, filenameBytes.length, true)
+    centralDirectoryHeader.view.setUint32(42, offset, true)
+
+    centralDirectoryChunks.push(centralDirectoryHeader.bytes, filenameBytes)
+    offset += localHeader.bytes.length + filenameBytes.length + dataBytes.length
+  }
+
+  const centralDirectoryOffset = offset
+  const centralDirectorySize = centralDirectoryChunks.reduce((size, chunk) => size + chunk.length, 0)
+  const endOfCentralDirectory = createZipRecord(0x06054b50, 22)
+  endOfCentralDirectory.view.setUint16(8, entries.length, true)
+  endOfCentralDirectory.view.setUint16(10, entries.length, true)
+  endOfCentralDirectory.view.setUint32(12, centralDirectorySize, true)
+  endOfCentralDirectory.view.setUint32(16, centralDirectoryOffset, true)
+
+  return new Blob([...chunks, ...centralDirectoryChunks, endOfCentralDirectory.bytes], { type: 'application/zip' })
 }
 
 function isInWorldcup(galleryPhoto) {
@@ -303,6 +428,52 @@ async function uploadGalleryPhoto() {
     uploadError.value = err.message ?? '이미지 업로드 중 오류가 발생했습니다.'
   } finally {
     isUploading.value = false
+  }
+}
+
+async function downloadAllGalleryPhotos() {
+  uploadError.value = ''
+  uploadSuccess.value = ''
+
+  if (!galleryPhotos.value.length) {
+    uploadError.value = '다운로드할 이미지가 없습니다.'
+    return
+  }
+
+  isDownloadingGallery.value = true
+
+  try {
+    const usedFilenames = new Set()
+    const zipEntries = []
+
+    for (const [index, photo] of galleryPhotos.value.entries()) {
+      const storagePath = storagePathForGalleryPhoto(photo)
+      let blob
+
+      if (hasSupabaseConfig && storagePath) {
+        const { data, error: downloadError } = await supabase.storage.from('eunseo-gallery').download(storagePath)
+        if (downloadError) throw downloadError
+        blob = data
+      } else {
+        const response = await fetch(photo.image_url)
+        if (!response.ok) throw new Error(`${photo.title} 이미지를 다운로드하지 못했습니다.`)
+        blob = await response.blob()
+      }
+
+      const extension = extensionForGalleryPhoto(photo, blob)
+      const filename = uniqueFilename(
+        `${String(index + 1).padStart(2, '0')}-${sanitizeFilename(photo.title)}.${extension}`,
+        usedFilenames,
+      )
+      zipEntries.push({ filename, blob: await blob.arrayBuffer() })
+    }
+
+    triggerBlobDownload(buildZipBlob(zipEntries), 'eunseo-gallery-images.zip')
+    uploadSuccess.value = `갤러리 이미지 ${galleryPhotos.value.length}장을 ZIP으로 다운로드했습니다.`
+  } catch (err) {
+    uploadError.value = err.message ?? '이미지 다운로드 중 오류가 발생했습니다.'
+  } finally {
+    isDownloadingGallery.value = false
   }
 }
 
@@ -655,7 +826,18 @@ onMounted(() => {
       <div class="admin-panel wide">
         <div class="panel-title-row">
           <h2>홈 갤러리 이미지 업로드</h2>
-          <span>갤러리는 전체 공개, 월드컵은 선택한 16장만 사용</span>
+          <div class="panel-title-actions">
+            <span>갤러리는 전체 공개, 월드컵은 선택한 16장만 사용</span>
+            <button
+              class="primary-action compact-action"
+              type="button"
+              :disabled="isDownloadingGallery || !galleryPhotos.length"
+              @click="downloadAllGalleryPhotos"
+            >
+              <Download :size="17" />
+              {{ isDownloadingGallery ? '다운로드 중' : '전체 다운로드' }}
+            </button>
+          </div>
         </div>
         <form class="upload-form" @submit.prevent="uploadGalleryPhoto">
           <label class="field">
