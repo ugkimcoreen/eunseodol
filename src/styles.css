@@ -131,7 +131,10 @@ a {
 .home-hero,
 .content-header,
 .menu-grid,
+.home-primary-actions,
+.home-secondary-actions,
 .home-gallery,
+.dining-menu-panel,
 .form-panel,
 .doljabi-results,
 .worldcup-stage,
@@ -343,6 +346,114 @@ h6 {
   gap: 16px;
   max-width: 1180px;
   margin: 0 auto;
+}
+
+.home-primary-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  max-width: 1180px;
+  margin: -72px auto 0;
+}
+
+.primary-menu-card {
+  position: relative;
+  display: grid;
+  min-height: 240px;
+  align-content: space-between;
+  gap: 20px;
+  overflow: hidden;
+  border: 1px solid rgba(116, 96, 82, 0.24);
+  border-radius: 8px;
+  background: rgba(255, 253, 249, 0.92);
+  padding: clamp(22px, 4vw, 34px);
+  box-shadow: 0 24px 52px rgba(85, 67, 49, 0.16);
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease,
+    background 160ms ease;
+}
+
+.primary-menu-card:hover,
+.primary-menu-card:focus-visible {
+  outline: none;
+  border-color: rgba(116, 96, 82, 0.52);
+  background: #fffdf8;
+  transform: translateY(-3px);
+}
+
+.primary-menu-card svg {
+  color: var(--brown);
+}
+
+.primary-menu-card small,
+.course-card h2,
+.dining-notice strong {
+  font-family: Pretendard, ui-sans-serif, system-ui, sans-serif;
+}
+
+.primary-menu-card small {
+  color: var(--gold);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+
+.primary-menu-card h2 {
+  margin: 8px 0 10px;
+  font-size: clamp(1.72rem, 4vw, 2.55rem);
+  font-weight: 600;
+}
+
+.primary-menu-card p {
+  margin: 0;
+  color: var(--muted);
+  font-family: Pretendard, ui-sans-serif, system-ui, sans-serif;
+  line-height: 1.62;
+  word-break: keep-all;
+}
+
+.primary-menu-card > span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  min-height: 48px;
+  border-radius: 7px;
+  background: var(--brown);
+  color: white;
+  padding: 0 20px;
+  font-family: Pretendard, ui-sans-serif, system-ui, sans-serif;
+  font-weight: 900;
+}
+
+.home-secondary-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  max-width: 1180px;
+  margin: 16px auto 0;
+}
+
+.secondary-menu-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  border: 1px solid rgba(116, 96, 82, 0.25);
+  border-radius: 999px;
+  background: rgba(255, 253, 249, 0.82);
+  color: var(--brown-dark);
+  padding: 0 16px;
+  font-family: Pretendard, ui-sans-serif, system-ui, sans-serif;
+  font-weight: 800;
+  box-shadow: 0 12px 28px rgba(85, 67, 49, 0.08);
+}
+
+.secondary-menu-link svg {
+  color: var(--brown);
 }
 
 .home-gallery {
@@ -588,6 +699,90 @@ h6 {
   max-width: 1180px;
   margin: 0 auto;
   padding: clamp(20px, 4vw, 34px);
+}
+
+.dining-header p:last-child {
+  color: var(--brown);
+  font-size: 1.16rem;
+  font-weight: 900;
+}
+
+.dining-menu-panel {
+  display: grid;
+  gap: 18px;
+  max-width: 860px;
+  margin: 0 auto;
+}
+
+.dining-notice,
+.course-card {
+  border: 1px solid rgba(116, 96, 82, 0.2);
+  border-radius: 8px;
+  background: var(--paper);
+  box-shadow: var(--shadow);
+}
+
+.dining-notice {
+  display: grid;
+  gap: 6px;
+  padding: clamp(18px, 4vw, 24px);
+}
+
+.dining-notice strong {
+  color: var(--brown);
+  font-weight: 900;
+}
+
+.dining-notice p {
+  margin: 0;
+  color: var(--muted);
+  font-family: Pretendard, ui-sans-serif, system-ui, sans-serif;
+  line-height: 1.65;
+  word-break: keep-all;
+}
+
+.course-list {
+  display: grid;
+  gap: 12px;
+}
+
+.course-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+  padding: clamp(16px, 4vw, 22px);
+}
+
+.course-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border: 1px solid rgba(116, 96, 82, 0.18);
+  border-radius: 999px;
+  background: #fffdf8;
+  color: var(--brown);
+}
+
+.course-card h2 {
+  margin: 0 0 6px;
+  color: var(--gold);
+  font-size: 0.86rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.course-card p {
+  margin: 0;
+  color: var(--ink);
+  font-family: Pretendard, ui-sans-serif, system-ui, sans-serif;
+  font-size: 1.04rem;
+  font-weight: 800;
+  line-height: 1.55;
+  word-break: keep-all;
 }
 
 .section-title {
@@ -1785,6 +1980,31 @@ h6 {
   gap: 7px;
 }
 
+.gallery-visible-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  border: 1px solid rgba(116, 96, 82, 0.18);
+  border-radius: 8px;
+  background: #fffdf9;
+  padding: 8px 9px;
+  color: var(--brown-dark);
+  font-family: Pretendard, ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.gallery-visible-toggle input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--brown);
+}
+
+.gallery-visible-toggle span {
+  white-space: normal;
+}
+
 .gallery-action-button {
   display: inline-flex;
   align-items: center;
@@ -2028,6 +2248,7 @@ th {
   }
 
   .home-hero,
+  .home-primary-actions,
   .menu-grid,
   .polaroid-grid,
   .option-grid,
@@ -2035,6 +2256,14 @@ th {
   .rolling-layout,
   .admin-grid {
     grid-template-columns: 1fr;
+  }
+
+  .home-primary-actions {
+    margin-top: -44px;
+  }
+
+  .primary-menu-card {
+    min-height: 190px;
   }
 
   .rank-first {
@@ -2214,6 +2443,59 @@ th {
 
   .menu-card {
     min-height: 230px;
+  }
+
+  .home-hero {
+    min-height: 390px;
+    margin-bottom: 20px;
+  }
+
+  .home-primary-actions {
+    gap: 10px;
+    margin-top: -38px;
+  }
+
+  .primary-menu-card {
+    min-height: 164px;
+    gap: 14px;
+    padding: 18px;
+  }
+
+  .primary-menu-card h2 {
+    margin: 6px 0 6px;
+    font-size: 1.55rem;
+  }
+
+  .primary-menu-card p {
+    font-size: 0.9rem;
+    line-height: 1.45;
+  }
+
+  .primary-menu-card > span {
+    min-height: 42px;
+    padding: 0 16px;
+  }
+
+  .home-secondary-actions {
+    justify-content: stretch;
+    gap: 8px;
+  }
+
+  .secondary-menu-link {
+    flex: 1 1 calc(50% - 8px);
+    min-height: 42px;
+    padding: 0 12px;
+    font-size: 0.88rem;
+  }
+
+  .course-card {
+    grid-template-columns: 38px minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .course-icon {
+    width: 38px;
+    height: 38px;
   }
 
   .paper-note {

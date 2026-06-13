@@ -57,8 +57,12 @@ create table if not exists public.eunseo_gallery_photos (
   title text not null,
   image_url text not null,
   storage_path text not null,
+  show_in_gallery boolean not null default false,
   created_at timestamptz not null default now()
 );
+
+alter table public.eunseo_gallery_photos
+add column if not exists show_in_gallery boolean not null default false;
 
 create table if not exists public.eunseo_home_video (
   id boolean primary key default true check (id = true),

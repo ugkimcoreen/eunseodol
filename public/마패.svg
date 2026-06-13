@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180" role="img" aria-label="마패">
+  <rect width="180" height="180" rx="42" fill="#fff7e8"/>
+  <circle cx="90" cy="90" r="55" fill="#8b5e3c" stroke="#5f3f2a" stroke-width="8"/>
+  <circle cx="90" cy="90" r="35" fill="#d4a76a" stroke="#fff3d8" stroke-width="5"/>
+  <text x="90" y="100" text-anchor="middle" font-family="serif" font-size="32" font-weight="700" fill="#4b3020">馬牌</text>
+</svg>

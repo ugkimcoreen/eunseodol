@@ -35,7 +35,7 @@ watch(
         <Menu v-else :size="20" />
       </button>
       <div id="primary-menu" class="nav-links" :class="{ open: isMenuOpen }">
-        <RouterLink to="/doljabi">돌잡이 로또</RouterLink>
+        <RouterLink to="/menu">식사메뉴</RouterLink>
         <RouterLink to="/photo-worldcup">포토월드컵</RouterLink>
         <RouterLink to="/rolling-paper">롤링페이퍼</RouterLink>
         <RouterLink to="/admin">Admin</RouterLink>

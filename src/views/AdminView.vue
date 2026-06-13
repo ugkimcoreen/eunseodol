@@ -30,6 +30,7 @@ const galleryEditingId = ref('')
 const galleryEditingTitle = ref('')
 const gallerySavingId = ref('')
 const galleryDeletingId = ref('')
+const galleryVisibilityUpdatingId = ref('')
 const isResetModalOpen = ref(false)
 const isResetting = ref(false)
 const resetConfirmText = ref('')
@@ -90,6 +91,7 @@ const galleryFileCountText = computed(() => {
   if (!galleryFiles.value.length) return '이미지 파일'
   return `${galleryFiles.value.length}장 선택됨`
 })
+const visibleGalleryCount = computed(() => galleryPhotos.value.filter((photo) => photo.show_in_gallery).length)
 const homeVideoFileText = computed(() => homeVideoFile.value?.name ?? '가로 영상 파일')
 
 function getCookieValue(name) {
@@ -412,6 +414,7 @@ async function uploadGalleryPhoto() {
               : file.name.replace(/\.[^.]+$/, ''),
         image_url: publicUrl,
         storage_path: storagePath,
+        show_in_gallery: false,
       })
     }
 
@@ -644,6 +647,36 @@ async function updateGalleryPhotoTitle(galleryPhoto) {
   }
 }
 
+async function toggleGalleryVisibility(galleryPhoto) {
+  if (!hasSupabaseConfig) {
+    uploadError.value = 'Supabase 환경 변수가 없어 갤러리 표시 여부를 수정할 수 없습니다.'
+    return
+  }
+
+  uploadError.value = ''
+  uploadSuccess.value = ''
+  galleryVisibilityUpdatingId.value = galleryPhoto.id
+
+  try {
+    const nextValue = !galleryPhoto.show_in_gallery
+    const { error: updateError } = await supabase
+      .from('eunseo_gallery_photos')
+      .update({ show_in_gallery: nextValue })
+      .eq('id', galleryPhoto.id)
+
+    if (updateError) throw updateError
+
+    galleryPhotos.value = galleryPhotos.value.map((photo) =>
+      photo.id === galleryPhoto.id ? { ...photo, show_in_gallery: nextValue } : photo,
+    )
+    uploadSuccess.value = nextValue ? '사용자 갤러리에 표시합니다.' : '사용자 갤러리에서 숨겼습니다.'
+  } catch (err) {
+    uploadError.value = err.message ?? '갤러리 표시 여부 수정 중 오류가 발생했습니다.'
+  } finally {
+    galleryVisibilityUpdatingId.value = ''
+  }
+}
+
 async function deleteGalleryPhoto(galleryPhoto) {
   if (!hasSupabaseConfig) {
     uploadError.value = 'Supabase 환경 변수가 없어 사진을 삭제할 수 없습니다.'
@@ -827,7 +860,7 @@ onMounted(() => {
         <div class="panel-title-row">
           <h2>홈 갤러리 이미지 업로드</h2>
           <div class="panel-title-actions">
-            <span>갤러리는 전체 공개, 월드컵은 선택한 16장만 사용</span>
+            <span>사용자 갤러리 {{ visibleGalleryCount }}장 표시 · 월드컵은 선택한 16장만 사용</span>
             <button
               class="primary-action compact-action"
               type="button"
@@ -901,6 +934,15 @@ onMounted(() => {
                 </button>
               </template>
             </div>
+            <label class="gallery-visible-toggle">
+              <input
+                type="checkbox"
+                :checked="Boolean(photo.show_in_gallery)"
+                :disabled="galleryVisibilityUpdatingId === photo.id"
+                @change="toggleGalleryVisibility(photo)"
+              />
+              <span>{{ photo.show_in_gallery ? '갤러리 표시 중' : '갤러리 숨김' }}</span>
+            </label>
             <button
               class="worldcup-toggle"
               type="button"
