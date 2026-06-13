@@ -7,7 +7,7 @@ import { hasSupabaseConfig, supabase } from "../lib/supabase";
 const primaryMenus = [
   {
     title: "오늘의 식사 메뉴",
-    description: "Western Set 03 코스 구성을 모바일에서 편하게 확인하세요.",
+    description: "오늘의 코스 구성을 모바일에서 편하게 확인하세요.",
     to: "/menu",
     label: "식사메뉴",
     icon: Utensils,
